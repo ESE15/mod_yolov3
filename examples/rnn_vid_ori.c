@@ -2,13 +2,6 @@
 
 #ifdef OPENCV
 image get_image_from_stream(CvCapture *cap);
-
-//// JH EDIT
-image get_image_from_stream2(void *p, double curTime); //JH EDIT
-image get_image_from_stream3(void *p, pthread_mutex_t *mutex);
-void frameRateMod(void *p,double curTimee, pthread_mutex_t *mutex);
-double getFPS(void *p);
-////
 image ipl_to_image(IplImage* src);
 
 void reconstruct_picture(network net, float *features, image recon, image update, float rate, float momentum, float lambda, int smooth_size, int iters);

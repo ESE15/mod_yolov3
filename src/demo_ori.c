@@ -9,10 +9,6 @@
 #include "demo.h"
 #include <sys/time.h>
 
-//// JH EDIT
-#include <unistd.h>
-////
-
 #define DEMO 1
 
 #ifdef OPENCV
@@ -38,17 +34,6 @@ static float *avg;
 static int demo_done = 0;
 static int demo_total = 0;
 double demo_time;
-
-////JH EDIT
-double startTime;
-int usedFrame=0;
-int adaptFrame=0;
-int ccnt=0;
-int isFetching=0;
-int isGetting=0;
-image loopimage;
-pthread_mutex_t mutex_lock;
-////
 
 detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num);
 
@@ -139,11 +124,9 @@ void *detect_in_thread(void *ptr)
 
     if (nms > 0) do_nms_obj(dets, nboxes, l.classes, nms);
 
-    //printf("\033[2J");
-    //printf("\033[1;1H");
+    printf("\033[2J");
+    printf("\033[1;1H");
     printf("\nFPS:%.1f\n",fps);
-    printf("Elapsed Time: %.2f\n",(what_time_is_it_now()-startTime)*1000 );
-    printf("Elapsed Frame:%d\n",usedFrame);
     printf("Objects:\n\n");
     image display = buff[(buff_index+2) % 3];
     draw_detections(display, dets, nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes);
@@ -153,56 +136,19 @@ void *detect_in_thread(void *ptr)
     running = 0;
     return 0;
 }
-/*
+
 void *fetch_in_thread(void *ptr)
 {
     free_image(buff[buff_index]);
-    ////buff[buff_index] = get_image_from_stream(cap);
-    buff[buff_index] = get_image_from_stream2(cap,(what_time_is_it_now()-startTime)*1000);
+    buff[buff_index] = get_image_from_stream(cap);
     if(buff[buff_index].data == 0) {
         demo_done = 1;
         return 0;
     }
     letterbox_image_into(buff[buff_index], net->w, net->h, buff_letter[buff_index]);
     return 0;
-}*/
-void *fetch_in_thread(void *ptr)
-{
-    //free_image(buff[buff_index]);
-    //////pthread_mutex_lock(&mutex_lock);
-    buff[buff_index] = get_image_from_stream3(cap,&mutex_lock);
-    //////pthread_mutex_unlock(&mutex_lock);
-    //isGetting=1;
-    ////buff[buff_index] = loopimage;//get_image_from_stream2(cap,(what_time_is_it_now()-startTime)*1000);
-    
-    if(buff[buff_index].data == 0) {
-        demo_done = 1;
-        return 0;
-    }
-    letterbox_image_into(buff[buff_index], net->w, net->h, buff_letter[buff_index]);//isGetting=0;
-    return 0;
 }
-void *fetch_loop_thread(void *ptr){
-    double frate = getFPS(cap);
-    while(1){
-        
-        if(frate==60){ // 60fps video
-            //////pthread_mutex_lock(&mutex_lock);
-            //usleep(12000);
-            if((what_time_is_it_now()-startTime)*60 > usedFrame+adaptFrame){
-                adaptFrame++;
-                free_image(loopimage);
-                loopimage=get_image_from_stream3(cap,&mutex_lock);
-            }
-            //frameRateMod(cap,(what_time_is_it_now()-startTime)*1000,&mutex_lock);
-            //////pthread_mutex_unlock(&mutex_lock);
-        }
-        else if(frate==30){ //30fps webcam or video. probably webcam. not maybe
-            free_image(loopimage);
-            loopimage=get_image_from_stream3(cap,&mutex_lock);
-        }
-    }
-}
+
 void *display_in_thread(void *ptr)
 {
     int c = show_image(buff[(buff_index + 1)%3], "Demo", 1);
@@ -252,7 +198,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     set_batch_network(net, 1);
     pthread_t detect_thread;
     pthread_t fetch_thread;
-    pthread_t fetch_looping;
+
     srand(2222222);
 
     int i;
@@ -265,14 +211,13 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
 
     if(filename){
         printf("video file: %s\n", filename);
-        ////cap = open_video_stream(filename, 0, 0, 0, 0);
         cap = open_video_stream(filename, 0, 0, 0, 0);
     }else{
         cap = open_video_stream(0, cam_index, w, h, frames);
     }
 
     if(!cap) error("Couldn't connect to webcam.\n");
-    pthread_mutex_init(&mutex_lock,NULL);
+
     buff[0] = get_image_from_stream(cap);
     buff[1] = copy_image(buff[0]);
     buff[2] = copy_image(buff[0]);
@@ -282,12 +227,11 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
 
     int count = 0;
     if(!prefix){
-        make_window("Demo", 640, 480, fullscreen);
+        make_window("Demo", 1352, 1013, fullscreen);
     }
-    
+
     demo_time = what_time_is_it_now();
-    startTime = demo_time;
-    if(pthread_create(&fetch_looping, 0, fetch_loop_thread, 0)) error("Thread creation failed");
+
     while(!demo_done){
         buff_index = (buff_index + 1) %3;
         if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
@@ -304,11 +248,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
         pthread_join(fetch_thread, 0);
         pthread_join(detect_thread, 0);
         ++count;
-        pthread_mutex_lock(&mutex_lock);
-        usedFrame++;
-        pthread_mutex_unlock(&mutex_lock);
     }
-    pthread_join(fetch_loop_thread,0);
 }
 
 /*

@@ -757,13 +757,6 @@ matrix make_matrix(int rows, int cols);
 #ifdef OPENCV
 void *open_video_stream(const char *f, int c, int w, int h, int fps);
 image get_image_from_stream(void *p);
-
-//// JH EDIT
-image get_image_from_stream2(void *p, double curTime); //JH EDIT
-image get_image_from_stream3(void *p, pthread_mutex_t *mutex);
-void frameRateMod(void *p,double curTimee, pthread_mutex_t *mutex);
-double getFPS(void *p);
-////
 void make_window(char *name, int w, int h, int fullscreen);
 #endif
 

@@ -16,13 +16,6 @@ extern "C" {
 #ifdef OPENCV
 void *open_video_stream(const char *f, int c, int w, int h, int fps);
 image get_image_from_stream(void *p);
-
-//// JH EDIT
-image get_image_from_stream2(void *p, double curTime); //JH EDIT
-image get_image_from_stream3(void *p, pthread_mutex_t *mutex);
-void frameRateMod(void *p,double curTimee, pthread_mutex_t *mutex);
-double getFPS(void *p);
-////
 image load_image_cv(char *filename, int channels);
 int show_image_cv(image im, const char* name, int ms);
 #endif

@@ -6,8 +6,7 @@
 #include "image.h"
 
 using namespace cv;
-int isCam=0;
-int cnt=0;
+
 extern "C" {
 
 IplImage *image_to_ipl(image im)
@@ -71,11 +70,11 @@ void *open_video_stream(const char *f, int c, int w, int h, int fps)
 {
     VideoCapture *cap;
     if(f) cap = new VideoCapture(f);
-    else {cap = new VideoCapture(c);isCam=1;}
+    else cap = new VideoCapture(c);
     if(!cap->isOpened()) return 0;
     if(w) cap->set(CV_CAP_PROP_FRAME_WIDTH, w);
     if(h) cap->set(CV_CAP_PROP_FRAME_HEIGHT, w);
-    if(fps) {cap->set(CV_CAP_PROP_FPS, w);}
+    if(fps) cap->set(CV_CAP_PROP_FPS, w);
     return (void *) cap;
 }
 
@@ -84,43 +83,8 @@ image get_image_from_stream(void *p)
     VideoCapture *cap = (VideoCapture *)p;
     Mat m;
     *cap >> m;
-    //printf("%f",cap->get(CV_CAP_PROP_FPS));
-    
     if(m.empty()) return make_empty_image(0,0,0);
     return mat_to_image(m);
-}
-image get_image_from_stream2(void *p, double curTime)
-{
-    VideoCapture *cap = (VideoCapture *)p;
-    //printf("%.1f\n",cap->get(CV_CAP_PROP_FPS));
-    Mat m;
-    if(isCam==0)cap->set(CV_CAP_PROP_POS_MSEC,curTime);
-    *cap >> m;
-    
-    
-    if(m.empty()) return make_empty_image(0,0,0);
-    return mat_to_image(m);
-}
-image get_image_from_stream3(void *p, pthread_mutex_t *mutex)
-{
-    VideoCapture *cap = (VideoCapture *)p;
-    //printf("%.1f\n",cap->get(CV_CAP_PROP_FPS));
-    Mat m;
-    pthread_mutex_lock(mutex);
-    *cap >> m;
-    pthread_mutex_unlock(mutex);
-    if(m.empty()) return make_empty_image(0,0,0);
-    return mat_to_image(m);
-}
-void frameRateMod(void *p,double curTime, pthread_mutex_t *mutex){
-    VideoCapture *cap = (VideoCapture *)p;
-    pthread_mutex_lock(mutex);
-    cap->set(CV_CAP_PROP_POS_MSEC,curTime);
-    pthread_mutex_unlock(mutex);
-}
-double getFPS(void *p){
-    VideoCapture *cap= (VideoCapture *)p;
-    return cap->get(CV_CAP_PROP_FPS);
 }
 
 image load_image_cv(char *filename, int channels)
