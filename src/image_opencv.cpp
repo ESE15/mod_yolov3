@@ -1,10 +1,11 @@
-#ifdef OPENCV
+//////#ifdef OPENCV
 
 #include "stdio.h"
 #include "stdlib.h"
 #include "opencv2/opencv.hpp"
 #include "image.h"
-
+#include <string>
+#include "MyClient.h"
 using namespace cv;
 int isCam=0;
 int cnt=0;
@@ -67,16 +68,17 @@ image mat_to_image(Mat m)
     return im;
 }
 
-void *open_video_stream(const char *f, int c, int w, int h, int fps)
+void* open_video_stream(const char *f, int c, int w, int h, int fps)
 {
     VideoCapture *cap;
+    
     if(f) cap = new VideoCapture(f);
     else {cap = new VideoCapture(c);isCam=1;}
     if(!cap->isOpened()) return 0;
     if(w) cap->set(CV_CAP_PROP_FRAME_WIDTH, w);
     if(h) cap->set(CV_CAP_PROP_FRAME_HEIGHT, w);
     if(fps) {cap->set(CV_CAP_PROP_FPS, w);}
-    return (void *) cap;
+    return (void*)cap;
 }
 
 image get_image_from_stream(void *p)
@@ -89,6 +91,20 @@ image get_image_from_stream(void *p)
     if(m.empty()) return make_empty_image(0,0,0);
     return mat_to_image(m);
 }
+/*image get_image_from_stream_test(void *p)
+{
+    VideoCapture *cap = (VideoCapture *)p;
+    Mat m;
+    *cap >> m;
+     *cap >> m;
+      *cap >> m;
+       *cap >> m;
+        *cap >> m;
+         *cap >> m;
+    
+    if(m.empty()) return make_empty_image(0,0,0);
+    return mat_to_image(m);
+}*/
 image get_image_from_stream2(void *p, double curTime)
 {
     VideoCapture *cap = (VideoCapture *)p;
@@ -112,6 +128,35 @@ image get_image_from_stream3(void *p, pthread_mutex_t *mutex)
     if(m.empty()) return make_empty_image(0,0,0);
     return mat_to_image(m);
 }
+image get_image_from_stream4(void *p, pthread_mutex_t *mutex)
+{
+    VideoCapture *cap = (VideoCapture *)p;
+    //printf("%.1f\n",cap->get(CV_CAP_PROP_FPS));
+    Mat m;
+    pthread_mutex_lock(mutex);
+    *cap >> m;
+    pthread_mutex_unlock(mutex);
+    if(m.empty()) return make_empty_image(0,0,0);
+    return mat_to_image(m);
+}
+image MyClient_ReceiveStreamForYolo(void* instance)
+{
+	MyClient * myClient = (MyClient*)instance ;
+	cv::Mat cv_img;
+	cv::Mat m;
+	// read frame
+	if (!myClient->ReceiveImage(cv_img))
+	{
+		printf("THREAD:: RECEIVE FAILED\n");
+		return make_empty_image(0,0,0);
+	}
+	m=cv_img.clone();
+	if(m.empty()) return make_empty_image(0,0,0);
+    return mat_to_image(m);
+	// if(m.empty()) return NULL;
+	// return m;
+}
+
 void frameRateMod(void *p,double curTime, pthread_mutex_t *mutex){
     VideoCapture *cap = (VideoCapture *)p;
     pthread_mutex_lock(mutex);
@@ -168,4 +213,4 @@ void make_window(char *name, int w, int h, int fullscreen)
 
 }
 
-#endif
+//////#endif

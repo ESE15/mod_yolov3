@@ -1,6 +1,5 @@
 #ifndef IMAGE_H
 #define IMAGE_H
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <float.h>
@@ -18,6 +17,7 @@ void *open_video_stream(const char *f, int c, int w, int h, int fps);
 image get_image_from_stream(void *p);
 
 //// JH EDIT
+
 image get_image_from_stream2(void *p, double curTime); //JH EDIT
 image get_image_from_stream3(void *p, pthread_mutex_t *mutex);
 void frameRateMod(void *p,double curTimee, pthread_mutex_t *mutex);

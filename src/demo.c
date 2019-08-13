@@ -1,3 +1,4 @@
+#include "MyClient.h"
 #include "network.h"
 #include "detection_layer.h"
 #include "region_layer.h"
@@ -9,14 +10,19 @@
 #include "demo.h"
 #include <sys/time.h>
 
-//// JH EDIT
+////JH EDIT
 #include <unistd.h>
 ////
 
 #define DEMO 1
 
-#ifdef OPENCV
-
+void* myClient;
+//////#ifdef OPENCV
+void imgCallback2(void* cv_img) {
+	 printf("hello?\n");
+	//resize(cv_img, cv_img, Size(640, 480), 0, 0, CV_INTER_LINEAR);
+	//imshow("playing", cv_img);
+}
 static char **demo_names;
 static image **demo_alphabet;
 static int demo_classes;
@@ -101,11 +107,11 @@ void *detect_in_thread(void *ptr)
 {
     running = 1;
     float nms = .4;
-
+    
     layer l = net->layers[net->n-1];
     float *X = buff_letter[(buff_index+2)%3].data;
     network_predict(net, X);
-
+    
     /*
        if(l.type == DETECTION){
        get_detection_boxes(l, 1, 1, demo_thresh, probs, boxes, 0);
@@ -153,8 +159,8 @@ void *detect_in_thread(void *ptr)
     running = 0;
     return 0;
 }
-/*
-void *fetch_in_thread(void *ptr)
+
+/*void *fetch_in_thread(void *ptr)
 {
     free_image(buff[buff_index]);
     ////buff[buff_index] = get_image_from_stream(cap);
@@ -170,11 +176,13 @@ void *fetch_in_thread(void *ptr)
 {
     //free_image(buff[buff_index]);
     //////pthread_mutex_lock(&mutex_lock);
-    buff[buff_index] = get_image_from_stream3(cap,&mutex_lock);
+    //buff[buff_index] = get_image_from_stream3(cap,&mutex_lock);
+    buff[buff_index] = MyClient_ReceiveStreamForYolo(myClient);
     //////pthread_mutex_unlock(&mutex_lock);
     //isGetting=1;
     ////buff[buff_index] = loopimage;//get_image_from_stream2(cap,(what_time_is_it_now()-startTime)*1000);
     
+ 
     if(buff[buff_index].data == 0) {
         demo_done = 1;
         return 0;
@@ -182,7 +190,7 @@ void *fetch_in_thread(void *ptr)
     letterbox_image_into(buff[buff_index], net->w, net->h, buff_letter[buff_index]);//isGetting=0;
     return 0;
 }
-void *fetch_loop_thread(void *ptr){
+void* fetch_loop_thread(void *ptr){
     double frate = getFPS(cap);
     while(1){
         
@@ -237,7 +245,6 @@ void *detect_loop(void *ptr)
         detect_in_thread(0);
     }
 }
-
 void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg_frames, float hier, int w, int h, int frames, int fullscreen)
 {
     //demo_frame = avg_frames;
@@ -253,15 +260,17 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     pthread_t detect_thread;
     pthread_t fetch_thread;
     pthread_t fetch_looping;
+    //void* myClient;
+    int resultForClient;
     srand(2222222);
-
     int i;
+    
     demo_total = size_network(net);
-    predictions = calloc(demo_frame, sizeof(float*));
+    predictions = (float**)calloc(demo_frame, sizeof(float*));
     for (i = 0; i < demo_frame; ++i){
-        predictions[i] = calloc(demo_total, sizeof(float));
+        predictions[i] =  (float*)calloc(demo_total, sizeof(float));
     }
-    avg = calloc(demo_total, sizeof(float));
+    avg =  (float*)calloc(demo_total, sizeof(float));
 
     if(filename){
         printf("video file: %s\n", filename);
@@ -270,7 +279,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     }else{
         cap = open_video_stream(0, cam_index, w, h, frames);
     }
-
     if(!cap) error("Couldn't connect to webcam.\n");
     pthread_mutex_init(&mutex_lock,NULL);
     buff[0] = get_image_from_stream(cap);
@@ -284,10 +292,13 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     if(!prefix){
         make_window("Demo", 640, 480, fullscreen);
     }
-    
+    myClient = MyClient_getInstance();
+    resultForClient = MyClient_Initialize(myClient) ;
+    MyClient_setCallback(myClient);
+    MyClient_startReceive(myClient);
     demo_time = what_time_is_it_now();
     startTime = demo_time;
-    if(pthread_create(&fetch_looping, 0, fetch_loop_thread, 0)) error("Thread creation failed");
+    //if(pthread_create(&fetch_looping, 0, fetch_loop_thread, 0)) error("Thread creation failed");
     while(!demo_done){
         buff_index = (buff_index + 1) %3;
         if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
@@ -308,7 +319,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
         usedFrame++;
         pthread_mutex_unlock(&mutex_lock);
     }
-    pthread_join(fetch_loop_thread,0);
+    //pthread_join(fetch_loop_thread,0);
 }
 
 /*
@@ -400,10 +411,10 @@ pthread_join(detect_thread, 0);
 }
 }
 */
-#else
-void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg, float hier, int w, int h, int frames, int fullscreen)
-{
-    fprintf(stderr, "Demo needs OpenCV for webcam images.\n");
-}
-#endif
+//////#else
+//////void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg, float hier, int w, int h, int frames, int fullscreen)
+//////{
+    //////fprintf(stderr, "Demo needs OpenCV for webcam images.\n");
+//////}
+//////#endif
 
