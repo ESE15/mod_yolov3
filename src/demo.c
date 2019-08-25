@@ -27,6 +27,7 @@ static char **demo_names;
 static image **demo_alphabet;
 static int demo_classes;
 
+// static image backUpImage;
 static network *net;
 static image buff [3];
 static image buff_letter[3];

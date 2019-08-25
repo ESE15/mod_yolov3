@@ -10,7 +10,8 @@ using namespace cv;
 int isCam=0;
 int cnt=0;
 extern "C" {
-
+cv::Mat backUpImage;
+int f=0;
 IplImage *image_to_ipl(image im)
 {
     int x,y,c;
@@ -148,13 +149,27 @@ image MyClient_ReceiveStreamForYolo(void* instance)
 	if (!myClient->ReceiveImage(cv_img))
 	{
 		printf("THREAD:: RECEIVE FAILED\n");
-		return make_empty_image(0,0,0);
+        if(f==0){
+		return make_random_image(640,480,3);
+        }else{
+            //return mat_to_image(backUpImage);
+            return make_random_image(640,480,3);
+        }
 	}
 	m=cv_img.clone();
-	if(m.empty()) return make_empty_image(0,0,0);
-    return mat_to_image(m);
-	// if(m.empty()) return NULL;
-	// return m;
+	if(m.empty()){ 
+        if(f==0){
+        return make_random_image(640,480,3);
+        }else{
+            return mat_to_image(backUpImage);
+        }
+    }
+    else{
+        f=1;
+        backUpImage=cv_img.clone();
+        return mat_to_image(m);
+        //return make_random_image(640,480,3);
+    }
 }
 
 void frameRateMod(void *p,double curTime, pthread_mutex_t *mutex){
