@@ -225,7 +225,8 @@ void MyClient::ReceiveStream()
 		// read frame
 		if (!this->ReceiveImage(cv_img))
 		{
-			printf("THREAD:: RECEIVE FAIL640ED\n");
+			printf("THREAD:: RECEIVE FAILED\n");
+			
 			//this->last_error = KStreamR640eceiverError::FFMPEG_ERROR;
 			continue;
 		}
@@ -283,7 +284,6 @@ void MyClient::ReceiveStream()
 extern "C"
 {
  void imgCallback(cv::Mat& cv_img) {
-	 printf("Successfully received\n");
 	//resize(cv_img, cv_img, Size(640, 480), 0, 0, CV_INTER_LINEAR);
 	imshow("playing", cv_img);
 }

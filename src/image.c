@@ -12,6 +12,9 @@
 
 int windows = 0;
 
+//char rectInfo[1000];
+char rectTemp[10];
+
 float colors[6][3] = { {1,0,1}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{1,0,0} };
 
 float get_color(int c, int x, int max)
@@ -236,10 +239,12 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
+void draw_detections(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes,char* rectInfo)
 {
     int i,j;
-
+    if(rectInfo!=NULL){
+        memset(rectInfo, 0x00,1000);
+    }
     for(i = 0; i < num; ++i){
         char labelstr[4096] = {0};
         int class = -1;
@@ -295,11 +300,21 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             if (alphabet) {
                 
                 if(!strcmp(names[class],"person")){
-                    printf("%s: %.0f%%\n",names[class],dets[i].prob[class]*100);
-                    printf("bounding box left   : %d\n",left);
-                    printf("bounding box right   : %d\n",right);
-                    printf("bounding box top   : %d\n",top);
-                    printf("bounding box bottom   : %d\n",bot);
+                    memset(rectTemp,0x00,sizeof(rectTemp));
+                    // printf("%s: %.0f%%\n",names[class],dets[i].prob[class]*100);
+                    // printf("bounding box left   : %d\n",left);
+                    // printf("bounding box right   : %d\n",right);
+                    // printf("bounding box top   : %d\n",top);
+                    // printf("bounding box bottom   : %d\n",bot);
+                    rectInfo[0]==0? sprintf(rectTemp,"%d,",left):sprintf(rectTemp,",%d,",left);
+                    rectInfo[0]==0? rectInfo[0]=0x11:rectInfo[0]++;
+                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                    sprintf(rectTemp,"%d,",right);
+                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                    sprintf(rectTemp,"%d,",top);
+                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                    sprintf(rectTemp,"%d",bot);
+                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
                 }
                 else{
                     printf("%s %.0f%%\n",names[class],dets[i].prob[class]*100);
