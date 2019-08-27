@@ -312,7 +312,7 @@ void *socket_in_thread(void *ptr){
         if(-1 ==parseMsg(buffer, msg_size, msg)){
             printf("제대로 못받음");
         }else{
-            printf(msg);printf("\n");
+            //printf(msg);printf("\n");
             if(msg[0]==START){
                 sendChar(client_fd,ACK);
             }
@@ -428,6 +428,8 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     int i;
 
     
+    memset(finalRectInfo,0x00,sizeof(finalRectInfo));
+    finalRectInfo[0]=0x10;
 
     demo_total = size_network(net);
     predictions = (float **)calloc(demo_frame, sizeof(float *));
@@ -467,8 +469,8 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     {
         myClient = MyClient_getInstance();
         resultForClient = MyClient_Initialize(myClient);
-        MyClient_setCallback(myClient);
-        MyClient_startReceive(myClient);
+        //MyClient_setCallback(myClient);
+        //MyClient_startReceive(myClient);
     }
     demo_time = what_time_is_it_now();
     startTime = demo_time;
