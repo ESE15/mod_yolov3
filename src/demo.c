@@ -469,8 +469,8 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     {
         myClient = MyClient_getInstance();
         resultForClient = MyClient_Initialize(myClient);
-        //MyClient_setCallback(myClient);
-        //MyClient_startReceive(myClient);
+        MyClient_setCallback(myClient);
+        MyClient_startReceive(myClient);
     }
     demo_time = what_time_is_it_now();
     startTime = demo_time;

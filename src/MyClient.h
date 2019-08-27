@@ -3,6 +3,7 @@
 #endif
 
 #define STREAM_FPS 30
+#define BUFFSIZEOFRTP 30000000
 #define STREAM_PIX_FMT  AV_PIX_FMT_YUV420P
 
 #include "image.h"

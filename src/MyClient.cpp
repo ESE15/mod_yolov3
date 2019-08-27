@@ -21,6 +21,8 @@ bool MyClient::Initialize(std::string ip, int port)
 {
 	int ret;
 	printf("Initializing Start\n");
+	AVDictionary *inputOptionsDict =nullptr;
+	char BUFFLENGTH[15];
 	context = avformat_alloc_context();
 	ccontext = avcodec_alloc_context3(NULL);
 	av_init_packet(&packet);
@@ -34,9 +36,11 @@ bool MyClient::Initialize(std::string ip, int port)
 	tempUrl.append(ip + ":");
 	tempUrl.append(std::to_string(port));
 	//tempUrl.append("/kstream");
-
+	sprintf(BUFFLENGTH,"%d",BUFFSIZEOFRTP);
+	av_dict_set(&inputOptionsDict,"reorder_queue_size","0",0);
+	av_dict_set(&inputOptionsDict,"buffer_size",BUFFLENGTH,0);
 	/* allocate the media context */
-	if (avformat_open_input(&context, tempUrl.c_str(), NULL, NULL) != 0) {
+	if (avformat_open_input(&context, tempUrl.c_str(), NULL, &inputOptionsDict) != 0) {
 		this->last_error = MyClientError::CANT_ALLOC_FORMAT_CONTEXT;
 		return false;
 	}
@@ -172,8 +176,8 @@ bool MyClient::StartReceive()
 	// 	//this->last_error = 0;
 	// 	return false;
 	// }
-	// this->receiver->join();
-	// printf("Thread joined\n");
+	// this->receiver->join();C_ID_MPEG
+	// printf("Thread joined\nC_ID_MPEG
 	MyClient::ReceiveStream();
 	return true;
 }
