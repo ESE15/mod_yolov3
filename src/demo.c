@@ -18,7 +18,7 @@
 #include "sys/socket.h"
 #include "netinet/in.h"
 #include <stdbool.h>
-#define BUF_LEN 256
+#define BUF_LEN 512
 #define STX 0x02
 #define ETX 0x03
 #define ACK 0x04
@@ -80,7 +80,7 @@ struct timeval tval;
 bool reuseflag = true;
 char rectInfo[1000];
 char finalRectInfo[1000];
-
+bool startFlag=false;
 
 
 double startTime;
@@ -200,7 +200,7 @@ void *detect_in_thread(void *ptr)
     image display = buff[(buff_index + 2) % 3];
     draw_detections(display, dets, nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes,rectInfo);
     if(rectInfo[0]!=0){
-        printf("%s\n",rectInfo);
+        //printf("%s\n",rectInfo);
         pthread_mutex_lock(&mutex_lock);
         strcpy(finalRectInfo,rectInfo);
         pthread_mutex_unlock(&mutex_lock);
@@ -230,7 +230,7 @@ void *detect_in_thread(void *ptr)
 }*/
 void *fetch_in_thread(void *ptr)
 {
-    //free_image(buff[buff_index]);
+    free_image(buff[buff_index]);
     //////pthread_mutex_lock(&mutex_lock);
     //buff[buff_index] = get_image_from_stream3(cap,&mutex_lock);
     //buff[buff_index] = MyClient_ReceiveStreamForYolo(myClient);
@@ -292,6 +292,9 @@ void *socket_in_thread(void *ptr){
     }
     inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, temp, sizeof(temp));
     printf("Server : %s client connected.\n", temp);
+    // pthread_mutex_lock(&mutex_lock);
+    // startFlag=true;
+    // pthread_mutex_unlock(&mutex_lock);
     while(1)
     {
         memset(buffer, 0x00, sizeof(buffer));
@@ -302,10 +305,16 @@ void *socket_in_thread(void *ptr){
             printf("아무것도 안옴\n");
         }
         else if(msg_size==0){
+            // pthread_mutex_lock(&mutex_lock);
+            // startFlag=false;
+            // pthread_mutex_unlock(&mutex_lock);
             printf("Server: Connection closed. retrying to connect\n");
             client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &len);
             inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, temp, sizeof(temp));
             printf("Server : %s client connected.\n", temp);
+            pthread_mutex_lock(&mutex_lock);
+            startFlag=true;
+            pthread_mutex_unlock(&mutex_lock);
             setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (char*) & tval, sizeof(struct timeval));
             setsockopt(client_fd,SOL_SOCKET,SO_REUSEADDR,(char*)&reuseflag,sizeof(reuseflag));
         }
@@ -469,8 +478,8 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     {
         myClient = MyClient_getInstance();
         resultForClient = MyClient_Initialize(myClient);
-        MyClient_setCallback(myClient);
-        MyClient_startReceive(myClient);
+        //MyClient_setCallback(myClient);
+        //MyClient_startReceive(myClient);
     }
     demo_time = what_time_is_it_now();
     startTime = demo_time;
@@ -478,6 +487,9 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     
     while (!demo_done)
     {
+        // pthread_mutex_lock(&mutex_lock);
+        // if(startFlag==false) continue;
+        // pthread_mutex_unlock(&mutex_lock);
         buff_index = (buff_index + 1) % 3;
         if (pthread_create(&fetch_thread, 0, fetch_in_thread, 0))
             error("Thread creation failed");
@@ -498,9 +510,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
         pthread_join(fetch_thread, 0);
         pthread_join(detect_thread, 0);
         ++count;
-        pthread_mutex_lock(&mutex_lock);
-        usedFrame++;
-        pthread_mutex_unlock(&mutex_lock);
     }
     pthread_join(socket_thread,0);
 }
@@ -528,7 +537,7 @@ void sendChar(int client_fd, char msg){
     temp[1]=0x01;
     temp[2]=msg;
     temp[strlen(temp)]=ETX;
-    write(client_fd, temp, sizeof(temp));
+    write(client_fd, temp, strlen(temp)+1);
 }
 void sendMsg(int client_fd, char* msg,char type){
     char temp[BUF_LEN];
@@ -545,7 +554,8 @@ void sendMsg(int client_fd, char* msg,char type){
         temp[strlen(temp)]=ETX;
     }
     
-    write(client_fd, temp, sizeof(temp));
+    //write(client_fd, temp, sizeof(temp));
+    write(client_fd, temp, strlen(temp)+1);
 }
 /*
    void demo_compare(char *cfg1, char *weight1, char *cfg2, char *weight2, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg_frames, float hier, int w, int h, int frames, int fullscreen)
