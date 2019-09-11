@@ -38,7 +38,7 @@ bool MyClient::Initialize(std::string ip, int port)
 	//tempUrl.append("/kstream");
 	sprintf(BUFFLENGTH,"%d",BUFFSIZEOFRTP);
 	av_dict_set(&inputOptionsDict,"reorder_queue_size","0",0);
-	//av_dict_set(&inputOptionsDict,"buffer_size",BUFFLENGTH,0);
+	av_dict_set(&inputOptionsDict,"buffer_size",BUFFLENGTH,0);
 	/* allocate the media context */
 	if (avformat_open_input(&context, tempUrl.c_str(), NULL, &inputOptionsDict) != 0) {
 		this->last_error = MyClientError::CANT_ALLOC_FORMAT_CONTEXT;
