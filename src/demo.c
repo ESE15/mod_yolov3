@@ -308,6 +308,9 @@ void *socket_in_thread(void *ptr){
             // pthread_mutex_lock(&mutex_lock);
             // startFlag=false;
             // pthread_mutex_unlock(&mutex_lock);
+            memset(rectInfo,0,sizeof(rectInfo));
+            memset(finalRectInfo,0,sizeof(finalRectInfo));
+            finalRectInfo[0]=0x10;
             printf("Server: Connection closed. retrying to connect\n");
             client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &len);
             inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, temp, sizeof(temp));
