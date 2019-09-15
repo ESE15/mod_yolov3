@@ -198,6 +198,7 @@ void *detect_in_thread(void *ptr)
 
     //printf("Objects:\n\n");
     image display = buff[(buff_index + 2) % 3];
+    memset(finalRectInfo,0,sizeof(finalRectInfo)); 
     draw_detections(display, dets, nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes,rectInfo);
     if(rectInfo[0]!=0){
         //printf("%s\n",rectInfo);
