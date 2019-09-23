@@ -261,7 +261,7 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             }
         }
         if(class >= 0){
-            if(!strcmp(names[class],"person")){
+          //  if(!strcmp(names[class],"person")){
             int width = im.h * .006;
 
             /*
@@ -299,9 +299,9 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             draw_box_width(im, left, top, right, bot, width, red, green, blue);
             if (alphabet) {
                 
-                if(!strcmp(names[class],"person")){
+                //if(!strcmp(names[class],"person")){
                     memset(rectTemp,0x00,sizeof(rectTemp));
-                    // printf("%s: %.0f%%\n",names[class],dets[i].prob[class]*100);
+                     //printf("%s: %.0f%%\n",names[class],dets[i].prob[class]*100);
                     // printf("bounding box left   : %d\n",left);
                     // printf("bounding box right   : %d\n",right);
                     // printf("bounding box top   : %d\n",top);
@@ -315,10 +315,10 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
                     strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
                     sprintf(rectTemp,"%d",bot);
                     strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
-                }
-                else{
-                    printf("%s %.0f%%\n",names[class],dets[i].prob[class]*100);
-                }
+                //}
+               // else{
+              //      printf("%s %.0f%%\n",names[class],dets[i].prob[class]*100);
+               // }
                 image label = get_label(alphabet, labelstr, (im.h*.03));
                 draw_label(im, top + width, left, label, rgb);
                 free_image(label);
@@ -332,7 +332,7 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
                 free_image(resized_mask);
                 free_image(tmask);
             }
-            }
+            //} //s
         }
     }
 }

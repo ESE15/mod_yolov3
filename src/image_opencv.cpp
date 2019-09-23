@@ -92,20 +92,10 @@ image get_image_from_stream(void *p)
     if(m.empty()) return make_empty_image(0,0,0);
     return mat_to_image(m);
 }
-/*image get_image_from_stream_test(void *p)
+image get_random_image()
 {
-    VideoCapture *cap = (VideoCapture *)p;
-    Mat m;
-    *cap >> m;
-     *cap >> m;
-      *cap >> m;
-       *cap >> m;
-        *cap >> m;
-         *cap >> m;
-    
-    if(m.empty()) return make_empty_image(0,0,0);
-    return mat_to_image(m);
-}*/
+    return make_random_image(640,480,3);
+}
 image get_image_from_stream2(void *p, double curTime)
 {
     VideoCapture *cap = (VideoCapture *)p;

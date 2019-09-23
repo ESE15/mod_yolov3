@@ -18,7 +18,7 @@
 #include "sys/socket.h"
 #include "netinet/in.h"
 #include <stdbool.h>
-#define BUF_LEN 512
+#define BUF_LEN 1024
 #define STX 0x02
 #define ETX 0x03
 #define ACK 0x04
@@ -26,13 +26,20 @@
 #define END 0x06
 #define RECT 0x07
 #define MSG 0x08
-#define STREAMING 1
+#define CATEGORY_INTRUSION 0x51
+#define CATEGORY_LOITERING 0x52
+#define CATEGORY_ABANDONMENT 0x53
+
 
 ////
 
 #define DEMO 1
 
-
+int STREAMING=0;
+int isWorking=0;
+char curCategory=0;
+int firstInitial=1;
+int programDone=0;   
 void *myClient;
 //////#ifdef OPENCV
 void imgCallback2(void *cv_img)
@@ -79,7 +86,7 @@ int len, msg_size;
 struct timeval tval;
 bool reuseflag = true;
 char rectInfo[1000];
-char finalRectInfo[1000];
+char finalRectInfo[1000]={0,};
 bool startFlag=false;
 
 
@@ -296,7 +303,10 @@ void *socket_in_thread(void *ptr){
     // pthread_mutex_lock(&mutex_lock);
     // startFlag=true;
     // pthread_mutex_unlock(&mutex_lock);
-    while(1)
+    memset(rectInfo,0,sizeof(rectInfo));
+    memset(finalRectInfo,0,sizeof(finalRectInfo));
+    finalRectInfo[0]=0x10;
+    while(!programDone)
     {
         memset(buffer, 0x00, sizeof(buffer));
         memset(msg,0x00,sizeof(msg));
@@ -312,8 +322,14 @@ void *socket_in_thread(void *ptr){
             memset(rectInfo,0,sizeof(rectInfo));
             memset(finalRectInfo,0,sizeof(finalRectInfo));
             finalRectInfo[0]=0x10;
+
+            isWorking=0;
+            demo_done=1;
+            curCategory=0;
+            exit(0);
             printf("Server: Connection closed. retrying to connect\n");
             client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &len);
+
             inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, temp, sizeof(temp));
             printf("Server : %s client connected.\n", temp);
             pthread_mutex_lock(&mutex_lock);
@@ -322,6 +338,7 @@ void *socket_in_thread(void *ptr){
             setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (char*) & tval, sizeof(struct timeval));
             setsockopt(client_fd,SOL_SOCKET,SO_REUSEADDR,(char*)&reuseflag,sizeof(reuseflag));
         }
+
         if(-1 ==parseMsg(buffer, msg_size, msg)){
             printf("제대로 못받음");
         }else{
@@ -330,13 +347,46 @@ void *socket_in_thread(void *ptr){
                 sendChar(client_fd,ACK);
             }
             else if(msg[0]==END){
+                demo_done = 1;
+                while(1){
+                    int iw=100;
+                    pthread_mutex_lock(&mutex_lock);
+                    iw=isWorking;
+                    pthread_mutex_unlock(&mutex_lock);
+                    if(iw==0)break;
+                }
                 sendChar(client_fd,ACK);
+            }
+            else if((msg[0]==CATEGORY_INTRUSION) ||(msg[0]==CATEGORY_LOITERING)  ){
+                curCategory=CATEGORY_INTRUSION;
+                while(1){
+                    int iw=0;
+                    pthread_mutex_lock(&mutex_lock);
+                    iw=isWorking;
+                    pthread_mutex_unlock(&mutex_lock);
+                    if(iw==1)break;
+                }
+                sendChar(client_fd,ACK);
+                printf("INT, LOI ACK\n");
+            }
+            else if(msg[0]==CATEGORY_ABANDONMENT){
+                curCategory=CATEGORY_ABANDONMENT;
+                while(1){
+                    int iw=0;
+                    pthread_mutex_lock(&mutex_lock);
+                    iw=isWorking;
+                    pthread_mutex_unlock(&mutex_lock);
+                    if(iw==1)break;
+                }
+                sendChar(client_fd,ACK);
+                printf("ABD ACK\n");
             }
             if(msg[0]==RECT){
                 pthread_mutex_lock(&mutex_lock);
                 sendMsg(client_fd,finalRectInfo,RECT);
                 pthread_mutex_unlock(&mutex_lock);
             }
+            
             //sendMsg(client_fd, msg);
         }
         
@@ -346,32 +396,7 @@ void *socket_in_thread(void *ptr){
     close(server_fd);
     ///////////////////////////////////////////
 }
-void *fetch_loop_thread(void *ptr)
-{
-    double frate = getFPS(cap);
-    while (1)
-    {
 
-        if (frate == 60)
-        { // 60fps video
-            //////pthread_mutex_lock(&mutex_lock);
-            //usleep(12000);
-            if ((what_time_is_it_now() - startTime) * 60 > usedFrame + adaptFrame)
-            {
-                adaptFrame++;
-                free_image(loopimage);
-                loopimage = get_image_from_stream3(cap, &mutex_lock);
-            }
-            //frameRateMod(cap,(what_time_is_it_now()-startTime)*1000,&mutex_lock);
-            //////pthread_mutex_unlock(&mutex_lock);
-        }
-        else if (frate == 30)
-        { //30fps webcam or video. probably webcam. not maybe
-            free_image(loopimage);
-            loopimage = get_image_from_stream3(cap, &mutex_lock);
-        }
-    }
-}
 void *display_in_thread(void *ptr)
 {
     int c = show_image(buff[(buff_index + 1) % 3], "Demo", 1);
@@ -420,8 +445,41 @@ void *detect_loop(void *ptr)
         detect_in_thread(0);
     }
 }
+
+
+void demoMod(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg_frames, float hier, int w, int h, int frames, int fullscreen,char *cfgfile2, char *weightfile2, char **names2, int classes2){
+    pthread_t socket_thread;
+     
+
+    pthread_mutex_init(&mutex_lock, NULL);
+    if(pthread_create(&socket_thread, 0, socket_in_thread, 0)) error("Thread creation failed");
+   // while(1){
+        while(1){
+            char cc=0;
+            pthread_mutex_lock(&mutex_lock);
+            cc = curCategory;
+            pthread_mutex_unlock(&mutex_lock);
+            if(cc!=0) break;
+        }
+        if(curCategory==CATEGORY_ABANDONMENT){
+            demo_done=0;
+            demo(cfgfile2, weightfile2, thresh, cam_index, filename, names2, classes2, delay, prefix, avg_frames, hier, w, h, frames, fullscreen);
+            programDone=1;
+        }
+        else if((curCategory==CATEGORY_INTRUSION)||(curCategory==CATEGORY_LOITERING)){
+            demo_done=0;
+            demo(cfgfile, weightfile, thresh, cam_index, filename, names, classes, delay, prefix, avg_frames, hier, w, h, frames, fullscreen);
+            programDone=1;
+        }
+        isWorking=0;
+   // }
+    pthread_join(socket_thread,0);
+}
+
 void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg_frames, float hier, int w, int h, int frames, int fullscreen)
 {
+
+
     //demo_frame = avg_frames;
     image **alphabet = load_alphabet();
     demo_names = names;
@@ -434,13 +492,12 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     set_batch_network(net, 1);
     pthread_t detect_thread;
     pthread_t fetch_thread;
-    pthread_t socket_thread;
     //void* myClient;
     int resultForClient;
     srand(2222222);
     int i;
 
-    
+    curCategory=0;
     memset(finalRectInfo,0x00,sizeof(finalRectInfo));
     finalRectInfo[0]=0x10;
 
@@ -452,39 +509,66 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     }
     avg = (float *)calloc(demo_total, sizeof(float));
 
-    if (filename)
-    {
-        printf("video file: %s\n", filename);
-        ////cap = open_video_stream(filename, 0, 0, 0, 0);
-        cap = open_video_stream(filename, 0, 0, 0, 0);
+    if(strcmp(filename,"STREAMING")==0){
+        STREAMING=1;
+    }else{
+        STREAMING=0;
     }
-    else
-    {
-        cap = open_video_stream(0, cam_index, w, h, frames);
-    }
-    if (!cap)
-        error("Couldn't connect to webcam.\n");
-    pthread_mutex_init(&mutex_lock, NULL);
-    buff[0] = get_image_from_stream(cap);
-    buff[1] = copy_image(buff[0]);
-    buff[2] = copy_image(buff[0]);
-    buff_letter[0] = letterbox_image(buff[0], net->w, net->h);
-    buff_letter[1] = letterbox_image(buff[0], net->w, net->h);
-    buff_letter[2] = letterbox_image(buff[0], net->w, net->h);
 
+    if(STREAMING){
+
+        buff[0] = get_random_image();
+        buff[1] = copy_image(buff[0]);
+        buff[2] = copy_image(buff[0]);
+        buff_letter[0] = letterbox_image(buff[0], net->w, net->h);
+        buff_letter[1] = letterbox_image(buff[0], net->w, net->h);
+        buff_letter[2] = letterbox_image(buff[0], net->w, net->h);
+        
+    }else{
+        if (filename)
+        {
+            printf("video file: %s\n", filename);
+            ////cap = open_video_stream(filename, 0, 0, 0, 0);
+            cap = open_video_stream(filename, 0, 0, 0, 0);
+        }
+        else
+        {
+            cap = open_video_stream(0, cam_index, w, h, frames);
+        }
+        if (!cap)
+            error("Couldn't connect to webcam.\n");
+
+        buff[0] = get_image_from_stream(cap);
+        buff[1] = copy_image(buff[0]);
+        buff[2] = copy_image(buff[0]);
+        buff_letter[0] = letterbox_image(buff[0], net->w, net->h);
+        buff_letter[1] = letterbox_image(buff[0], net->w, net->h);
+        buff_letter[2] = letterbox_image(buff[0], net->w, net->h);
+    }
+    
+    
     int count = 0;
     if (!prefix)
     {
-        make_window("Demo", 640, 480, fullscreen);
+        make_window("Demo", 1280, 720, fullscreen);
     }
-    if(pthread_create(&socket_thread, 0, socket_in_thread, 0)) error("Thread creation failed");
+
+    pthread_mutex_lock(&mutex_lock);
+    isWorking=1;
+    pthread_mutex_unlock(&mutex_lock);
+
+
     if (STREAMING)
     {
-        myClient = MyClient_getInstance();
-        resultForClient = MyClient_Initialize(myClient);
+        if(firstInitial){
+            myClient = MyClient_getInstance();
+            resultForClient = MyClient_Initialize(myClient);
+            firstInitial=0;
+        }
         //MyClient_setCallback(myClient);
         //MyClient_startReceive(myClient);
     }
+
     demo_time = what_time_is_it_now();
     startTime = demo_time;
     //if(pthread_create(&fetch_looping, 0, fetch_loop_thread, 0)) error("Thread creation failed");
@@ -515,8 +599,19 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
         pthread_join(detect_thread, 0);
         ++count;
     }
-    pthread_join(socket_thread,0);
+
+    free(net);
+    for (i = 0; i < demo_frame; ++i)
+    {
+        free(predictions[i]);
+    }
+    free(predictions);
+    free(avg);
+    return;
 }
+
+
+
 int parseMsg(char *buffer, int msg_size, char* message){
     char i=0;
     if(buffer[0]==STX){
@@ -561,6 +656,145 @@ void sendMsg(int client_fd, char* msg,char type){
     //write(client_fd, temp, sizeof(temp));
     write(client_fd, temp, strlen(temp)+1);
 }
+
+
+
+
+
+
+
+
+
+
+void *fetch_loop_thread(void *ptr)
+{
+    double frate = getFPS(cap);
+    while (1)
+    {
+
+        if (frate == 60)
+        { // 60fps video
+            //////pthread_mutex_lock(&mutex_lock);
+            //usleep(12000);
+            if ((what_time_is_it_now() - startTime) * 60 > usedFrame + adaptFrame)
+            {
+                adaptFrame++;
+                free_image(loopimage);
+                loopimage = get_image_from_stream3(cap, &mutex_lock);
+            }
+            //frameRateMod(cap,(what_time_is_it_now()-startTime)*1000,&mutex_lock);
+            //////pthread_mutex_unlock(&mutex_lock);
+        }
+        else if (frate == 30)
+        { //30fps webcam or video. probably webcam. not maybe
+            free_image(loopimage);
+            loopimage = get_image_from_stream3(cap, &mutex_lock);
+        }
+    }
+}
+
+////@@@@@@@@@@@@  COMMIT 4a9f9b 2차수정 테스트 백업@@@@@@@@@@@@@@@@@
+
+// void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg_frames, float hier, int w, int h, int frames, int fullscreen)
+// {
+
+
+//     //demo_frame = avg_frames;
+//     image **alphabet = load_alphabet();
+//     demo_names = names;
+//     demo_alphabet = alphabet;
+//     demo_classes = classes;
+//     demo_thresh = thresh;
+//     demo_hier = hier;
+//     printf("Demo\n");
+//     net = load_network(cfgfile, weightfile, 0);
+//     set_batch_network(net, 1);
+//     pthread_t detect_thread;
+//     pthread_t fetch_thread;
+//     pthread_t socket_thread;
+//     //void* myClient;
+//     int resultForClient;
+//     srand(2222222);
+//     int i;
+
+    
+//     memset(finalRectInfo,0x00,sizeof(finalRectInfo));
+//     finalRectInfo[0]=0x10;
+
+//     demo_total = size_network(net);
+//     predictions = (float **)calloc(demo_frame, sizeof(float *));
+//     for (i = 0; i < demo_frame; ++i)
+//     {
+//         predictions[i] = (float *)calloc(demo_total, sizeof(float));
+//     }
+//     avg = (float *)calloc(demo_total, sizeof(float));
+
+//     if (filename)
+//     {
+//         printf("video file: %s\n", filename);
+//         ////cap = open_video_stream(filename, 0, 0, 0, 0);
+//         cap = open_video_stream(filename, 0, 0, 0, 0);
+//     }
+//     else
+//     {
+//         cap = open_video_stream(0, cam_index, w, h, frames);
+//     }
+//     if (!cap)
+//         error("Couldn't connect to webcam.\n");
+//     pthread_mutex_init(&mutex_lock, NULL);
+//     buff[0] = get_image_from_stream(cap);
+//     buff[1] = copy_image(buff[0]);
+//     buff[2] = copy_image(buff[0]);
+//     buff_letter[0] = letterbox_image(buff[0], net->w, net->h);
+//     buff_letter[1] = letterbox_image(buff[0], net->w, net->h);
+//     buff_letter[2] = letterbox_image(buff[0], net->w, net->h);
+
+//     int count = 0;
+//     if (!prefix)
+//     {
+//         make_window("Demo", 1280, 720, fullscreen);
+//     }
+//     if(pthread_create(&socket_thread, 0, socket_in_thread, 0)) error("Thread creation failed");
+//     if (STREAMING)
+//     {
+//         myClient = MyClient_getInstance();
+//         resultForClient = MyClient_Initialize(myClient);
+//         //MyClient_setCallback(myClient);
+//         //MyClient_startReceive(myClient);
+//     }
+//     demo_time = what_time_is_it_now();
+//     startTime = demo_time;
+//     //if(pthread_create(&fetch_looping, 0, fetch_loop_thread, 0)) error("Thread creation failed");
+    
+//     while (!demo_done)
+//     {
+//         // pthread_mutex_lock(&mutex_lock);
+//         // if(startFlag==false) continue;
+//         // pthread_mutex_unlock(&mutex_lock);
+//         buff_index = (buff_index + 1) % 3;
+//         if (pthread_create(&fetch_thread, 0, fetch_in_thread, 0))
+//             error("Thread creation failed");
+//         if (pthread_create(&detect_thread, 0, detect_in_thread, 0))
+//             error("Thread creation failed");
+//         if (!prefix)
+//         {
+//             fps = 1. / (what_time_is_it_now() - demo_time);
+//             demo_time = what_time_is_it_now();
+//             display_in_thread(0);
+//         }
+//         else
+//         {
+//             char name[256];
+//             sprintf(name, "%s_%08d", prefix, count);
+//             save_image(buff[(buff_index + 1) % 3], name);
+//         }
+//         pthread_join(fetch_thread, 0);
+//         pthread_join(detect_thread, 0);
+//         ++count;
+//     }
+//     pthread_join(socket_thread,0);
+// }
+
 /*
    void demo_compare(char *cfg1, char *weight1, char *cfg2, char *weight2, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg_frames, float hier, int w, int h, int frames, int fullscreen)
    {
