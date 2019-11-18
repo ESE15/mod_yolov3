@@ -10,10 +10,14 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#define CATEGORY_INTRUSION 0x51
+#define CATEGORY_LOITERING 0x52
+#define CATEGORY_ABANDONMENT 0x53
 int windows = 0;
 
 //char rectInfo[1000];
 char rectTemp[10];
+int currentCategory=0;
 
 float colors[6][3] = { {1,0,1}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{1,0,0} };
 
@@ -238,6 +242,14 @@ image **load_alphabet()
     }
     return alphabets;
 }
+void setCategory(int category){
+    currentCategory=category;
+    switch(currentCategory){
+        case CATEGORY_ABANDONMENT:printf("abd");break;
+        case CATEGORY_INTRUSION: printf("intr");break;
+        case CATEGORY_LOITERING: printf("loit");break;
+    }
+}
 
 void draw_detections(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes,char* rectInfo)
 {
@@ -261,7 +273,7 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             }
         }
         if(class >= 0){
-          //  if(!strcmp(names[class],"person")){
+            if(!strcmp(names[class],"person") || !strcmp(names[class],"plasticbag") || !strcmp(names[class],"paperbag")){ //s
             int width = im.h * .006;
 
             /*
@@ -299,26 +311,54 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             draw_box_width(im, left, top, right, bot, width, red, green, blue);
             if (alphabet) {
                 
-                //if(!strcmp(names[class],"person")){
-                    memset(rectTemp,0x00,sizeof(rectTemp));
-                     //printf("%s: %.0f%%\n",names[class],dets[i].prob[class]*100);
-                    // printf("bounding box left   : %d\n",left);
-                    // printf("bounding box right   : %d\n",right);
-                    // printf("bounding box top   : %d\n",top);
-                    // printf("bounding box bottom   : %d\n",bot);
-                    rectInfo[0]==0? sprintf(rectTemp,"%d,",left):sprintf(rectTemp,",%d,",left);
-                    rectInfo[0]==0? rectInfo[0]=0x11:rectInfo[0]++;
-                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
-                    sprintf(rectTemp,"%d,",right);
-                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
-                    sprintf(rectTemp,"%d,",top);
-                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
-                    sprintf(rectTemp,"%d",bot);
-                    strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
-                //}
-               // else{
-              //      printf("%s %.0f%%\n",names[class],dets[i].prob[class]*100);
-               // }
+                if(currentCategory == CATEGORY_ABANDONMENT){
+                    if(!strcmp(names[class],"plasticbag") || !strcmp(names[class],"paperbag")){
+                        memset(rectTemp,0x00,sizeof(rectTemp));
+                        rectInfo[0]==0? sprintf(rectTemp,"%d,",left):sprintf(rectTemp,",%d,",left);
+                        rectInfo[0]==0? rectInfo[0]=0x11:rectInfo[0]++;
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                        sprintf(rectTemp,"%d,",right);
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                        sprintf(rectTemp,"%d,",top);
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                        sprintf(rectTemp,"%d",bot);
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                    }
+                }
+                else if((currentCategory==CATEGORY_INTRUSION) || (currentCategory==CATEGORY_LOITERING)){
+                    if(!strcmp(names[class],"person")){
+                        memset(rectTemp,0x00,sizeof(rectTemp));
+                        rectInfo[0]==0? sprintf(rectTemp,"%d,",left):sprintf(rectTemp,",%d,",left);
+                        rectInfo[0]==0? rectInfo[0]=0x11:rectInfo[0]++;
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                        sprintf(rectTemp,"%d,",right);
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                        sprintf(rectTemp,"%d,",top);
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                        sprintf(rectTemp,"%d",bot);
+                        strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+                    }
+                }
+            //     if(!strcmp(names[class],"person") || !strcmp(names[class],"plasticbag") || !strcmp(names[class],"paperbag")){
+            //         memset(rectTemp,0x00,sizeof(rectTemp));
+            //          //printf("%s: %.0f%%\n",names[class],dets[i].prob[class]*100);
+            //         // printf("bounding box left   : %d\n",left);
+            //         // printf("bounding box right   : %d\n",right);
+            //         // printf("bounding box top   : %d\n",top);
+            //         // printf("bounding box bottom   : %d\n",bot);
+            //         rectInfo[0]==0? sprintf(rectTemp,"%d,",left):sprintf(rectTemp,",%d,",left);
+            //         rectInfo[0]==0? rectInfo[0]=0x11:rectInfo[0]++;
+            //         strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+            //         sprintf(rectTemp,"%d,",right);
+            //         strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+            //         sprintf(rectTemp,"%d,",top);
+            //         strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+            //         sprintf(rectTemp,"%d",bot);
+            //         strcat(rectInfo,rectTemp);memset(rectTemp,0x00,sizeof(rectTemp));
+            //     }
+            //    else{
+            //        printf("%s %.0f%%\n",names[class],dets[i].prob[class]*100);
+            //    }
                 image label = get_label(alphabet, labelstr, (im.h*.03));
                 draw_label(im, top + width, left, label, rgb);
                 free_image(label);
@@ -332,7 +372,7 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
                 free_image(resized_mask);
                 free_image(tmask);
             }
-            //} //s
+            } //s
         }
     }
 }

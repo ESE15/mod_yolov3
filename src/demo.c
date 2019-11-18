@@ -206,6 +206,7 @@ void *detect_in_thread(void *ptr)
     //printf("Objects:\n\n");
     image display = buff[(buff_index + 2) % 3];
     memset(finalRectInfo,0,sizeof(finalRectInfo)); 
+    
     draw_detections(display, dets, nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes,rectInfo);
     if(rectInfo[0]!=0){
         //printf("%s\n",rectInfo);
@@ -359,6 +360,7 @@ void *socket_in_thread(void *ptr){
             }
             else if((msg[0]==CATEGORY_INTRUSION) ||(msg[0]==CATEGORY_LOITERING)  ){
                 curCategory=CATEGORY_INTRUSION;
+                setCategory(curCategory);
                 while(1){
                     int iw=0;
                     pthread_mutex_lock(&mutex_lock);
@@ -371,6 +373,7 @@ void *socket_in_thread(void *ptr){
             }
             else if(msg[0]==CATEGORY_ABANDONMENT){
                 curCategory=CATEGORY_ABANDONMENT;
+                setCategory(curCategory);
                 while(1){
                     int iw=0;
                     pthread_mutex_lock(&mutex_lock);
