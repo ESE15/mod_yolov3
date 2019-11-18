@@ -405,7 +405,7 @@ void *display_in_thread(void *ptr)
     int c = show_image(buff[(buff_index + 1) % 3], "Demo", 1);
     if (c != -1)
         c = c % 256;
-    if (c == 27)
+    if (c == 27) 
     {
         demo_done = 1;
         return 0;
