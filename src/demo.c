@@ -156,8 +156,11 @@ detection *avg_predictions(network *net, int *nboxes)
 
 void *detect_in_thread(void *ptr)
 {
+    double start_time;
     running = 1;
     float nms = .4;
+    
+    start_time = what_time_is_it_now();
 
     layer l = net->layers[net->n - 1];
     float *X = buff_letter[(buff_index + 2) % 3].data;
@@ -199,7 +202,7 @@ void *detect_in_thread(void *ptr)
     //printf("\033[2J");
     //printf("\033[1;1H");
 
-    // printf("\nFPS:%.1f\n", fps);
+    //printf("\nFPS:%.1f\n", fps);
     // printf("Elapsed Time: %.2f\n", (what_time_is_it_now() - startTime) * 1000);
     // printf("Elapsed Frame:%d\n", usedFrame);
 
@@ -222,6 +225,7 @@ void *detect_in_thread(void *ptr)
 
     demo_index = (demo_index + 1) % demo_frame;
     running = 0;
+    printf(" \n Detection time : %.3f",what_time_is_it_now()-start_time);
     return 0;
 }
 
